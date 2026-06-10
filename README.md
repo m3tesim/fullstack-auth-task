@@ -60,6 +60,34 @@ cp .env.example .env.local   # set VITE_API_URL to the backend URL
 npm run dev
 ```
 
+## Testing
+
+### Backend — E2E (Jest + Supertest)
+Spins up the full Nest app against an in-memory MongoDB
+(`mongodb-memory-server`) with the same global `ValidationPipe` and exception
+filter as production. Collections are cleared before every test.
+
+```bash
+cd server
+npm run test:e2e
+```
+
+Covers: successful signup (password hash never returned), `400` for short name /
+malformed email / weak password, `409` duplicate email, successful signin
+(signed JWT), and `401` for a wrong password.
+
+### Frontend — integration (Vitest + React Testing Library)
+Renders the real `SignupForm` (react-hook-form + zodResolver) in jsdom.
+
+```bash
+cd client
+npm run test
+```
+
+Covers: all fields render, inline validation errors on empty submit, password
+complexity error on a weak password, and a valid submit clearing errors and
+calling the signup action.
+
 ## API
 
 | Method | Endpoint        | Auth   | Description                          |
