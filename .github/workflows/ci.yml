@@ -1,0 +1,43 @@
+name: Full-Stack CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & Test Backend
+        run: |
+          cd server
+          npm ci
+          npm run test -- --passWithNoTests
+          npm run build
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4 
+        with:
+          node-version: 20
+
+      - name: Install & Build Frontend
+        run: |
+          cd client
+          npm ci
+          npm run build
