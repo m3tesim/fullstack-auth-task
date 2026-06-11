@@ -103,16 +103,42 @@ describe('AuthController (e2e)', () => {
       );
     });
 
-    it('returns 400 when the password fails the complexity rules', async () => {
-      const response = await request(httpServer())
-        .post('/auth/signup')
-        .send({ ...validUser, email: 'weakpass@example.com', password: 'abcdefgh' })
-        .expect(400);
+    it.each([
+      {
+        password: 'abc1!',
+        expected: 'Password must be at least 8 characters long',
+        email: 'shortpass@example.com',
+      },
+      {
+        password: 'abcdefgh',
+        expected:
+          'Password must contain at least one letter, one number and one special character',
+        email: 'no-number@example.com',
+      },
+      {
+        password: '12345678!',
+        expected:
+          'Password must contain at least one letter, one number and one special character',
+        email: 'no-letter@example.com',
+      },
+      {
+        password: 'abcdefgh1',
+        expected:
+          'Password must contain at least one letter, one number and one special character',
+        email: 'no-special@example.com',
+      },
+    ])(
+      'returns 400 when the password is "$password"',
+      async ({ password, expected, email }) => {
+        const response = await request(httpServer())
+          .post('/auth/signup')
+          .send({ ...validUser, email, password })
+          .expect(400);
 
-      expect(response.body.message).toContain(
-        'Password must contain at least one letter, one number and one special character',
-      );
-    });
+        expect(response.body.statusCode).toBe(400);
+        expect(response.body.message).toContain(expected);
+      },
+    );
 
     it('returns 409 when the email already exists', async () => {
       await request(httpServer()).post('/auth/signup').send(validUser).expect(201);
@@ -166,5 +192,37 @@ describe('AuthController (e2e)', () => {
       expect(response.body.statusCode).toBe(401);
       expect(response.body.message).toBe('Invalid email or password');
     });
+
+    it('returns 401 when the email is not registered', async () => {
+      const response = await request(httpServer())
+        .post('/auth/signin')
+        .send({ email: 'unknown@example.com', password: validUser.password })
+        .expect(401);
+
+      expect(response.body.statusCode).toBe(401);
+      expect(response.body.message).toBe('Invalid email or password');
+    });
+
+    it.each([
+      {
+        payload: { email: 'not-an-email', password: validUser.password },
+        expected: 'A valid email address is required',
+      },
+      {
+        payload: { email: validUser.email, password: '' },
+        expected: 'Password is required',
+      },
+    ])(
+      'returns 400 for invalid signin payload %j',
+      async ({ payload, expected }) => {
+        const response = await request(httpServer())
+          .post('/auth/signin')
+          .send(payload)
+          .expect(400);
+
+        expect(response.body.statusCode).toBe(400);
+        expect(response.body.message).toContain(expected);
+      },
+    );
   });
 });

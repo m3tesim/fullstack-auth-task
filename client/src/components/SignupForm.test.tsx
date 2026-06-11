@@ -40,12 +40,15 @@ describe('SignupForm', () => {
     navigateMock.mockReset();
   });
 
-  it('renders the Name, Email, Password fields and the submit button', () => {
+  it('renders the Name, Email, Password fields, visibility toggle, and submit button', () => {
     renderForm();
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Show password' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Create account' }),
     ).toBeInTheDocument();
@@ -68,20 +71,49 @@ describe('SignupForm', () => {
     expect(signUpMock).not.toHaveBeenCalled();
   });
 
-  it('shows a password complexity error for a weak password and blocks submission', async () => {
+  it.each([
+    {
+      password: 'abcdefgh',
+      message: 'Password must contain at least one number',
+    },
+    {
+      password: '12345678!',
+      message: 'Password must contain at least one letter',
+    },
+    {
+      password: 'abcdefgh1',
+      message: 'Password must contain at least one special character',
+    },
+    {
+      password: 'abc1!',
+      message: 'Password must be at least 8 characters long',
+    },
+  ])(
+    'shows "$message" for password "$password" and blocks submission',
+    async ({ password, message }) => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.type(screen.getByLabelText('Name'), 'Jane Doe');
+      await user.type(screen.getByLabelText('Email'), 'jane@example.com');
+      await user.type(screen.getByLabelText('Password'), password);
+      await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(signUpMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('toggles password visibility without clearing the field value', async () => {
     const user = userEvent.setup();
     renderForm();
 
-    await user.type(screen.getByLabelText('Name'), 'Jane Doe');
-    await user.type(screen.getByLabelText('Email'), 'jane@example.com');
-    // 8+ chars but no number and no special character.
-    await user.type(screen.getByLabelText('Password'), 'abcdefgh');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    const passwordInput = screen.getByLabelText('Password');
+    await user.type(passwordInput, 'Passw0rd!');
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
 
-    expect(
-      await screen.findByText('Password must contain at least one number'),
-    ).toBeInTheDocument();
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(passwordInput).toHaveAttribute('type', 'text');
+    expect(passwordInput).toHaveValue('Passw0rd!');
   });
 
   it('submits valid data: clears errors and calls the signup action once', async () => {
